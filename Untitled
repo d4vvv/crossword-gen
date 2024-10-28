@@ -1,0 +1,179 @@
+  import fs from 'fs'
+  
+const fileData = fs.readFileSync('./combinedData.json', 'utf-8')
+
+const parsedWords = JSON.parse(fileData)
+
+// Helper function to create an empty grid
+const createGrid = (size) => Array.from({ length: size }, () => Array(size).fill('-'));
+
+// Function to check if a word can be placed horizontally in the grid
+const canPlaceHorizontal = (grid, word, row, col, wordList, isConnected) => {
+  if (col + word.length > grid.length) return false;
+  
+  let intersects = false;
+
+  // Check for collisions and ensure valid words are formed vertically
+  for (let i = 0; i < word.length; i++) {
+    const char = word[i];
+    const currentCell = grid[row][col + i];
+
+    if (currentCell !== '-' && currentCell !== char) {
+      return false; // Collision
+    }
+
+    // Check for valid vertical words at the intersection points
+    let verticalWord = extractVerticalWord(grid, word, row, col + i, i, "horizontal");
+    if (verticalWord && !wordList.includes(verticalWord)) {
+      return false; // Invalid vertical word formed
+    }
+
+    // Check if this word intersects with an already placed word
+    if (currentCell !== '-') {
+      intersects = true;
+    }
+  }
+
+  return isConnected ? intersects : true;
+};
+
+// Function to check if a word can be placed vertically in the grid
+const canPlaceVertical = (grid, word, row, col, wordList, isConnected) => {
+  if (row + word.length > grid.length) return false;
+
+  let intersects = false;
+
+  // Check for collisions and ensure valid words are formed horizontally
+  for (let i = 0; i < word.length; i++) {
+    const char = word[i];
+    const currentCell = grid[row + i][col];
+
+    if (currentCell !== '-' && currentCell !== char) {
+      return false; // Collision
+    }
+
+    // Check for valid horizontal words at the intersection points
+    let horizontalWord = extractHorizontalWord(grid, word, row + i, col, i, "vertical");
+    if (horizontalWord && !wordList.includes(horizontalWord)) {
+      return false; // Invalid horizontal word formed
+    }
+
+    // Check if this word intersects with an already placed word
+    if (currentCell !== '-') {
+      intersects = true;
+    }
+  }
+
+  return isConnected ? intersects : true;
+};
+
+// Function to place a word horizontally in the grid
+const placeHorizontal = (grid, word, row, col) =>
+  grid.map((r, i) =>
+    i === row
+      ? r.map((cell, j) => (j >= col && j < col + word.length ? word[j - col] : cell))
+      : r
+  );
+
+// Function to place a word vertically in the grid
+const placeVertical = (grid, word, row, col) =>
+  grid.map((r, i) =>
+    i >= row && i < row + word.length
+      ? r.map((cell, j) => (j === col ? word[i - row] : cell))
+      : r
+  );
+
+// Extract potential vertical word formed at the intersection point when placing horizontally
+const extractVerticalWord = (grid, word, row, col, wordIndex, direction) => {
+  let verticalWord = '';
+
+  // Scan upwards
+  for (let i = row - 1; i >= 0 && grid[i][col] !== '-'; i--) {
+    verticalWord = grid[i][col] + verticalWord;
+  }
+
+  // Add the current character of the word being placed
+  verticalWord += word[wordIndex];
+
+  // Scan downwards
+  for (let i = row + 1; i < grid.length && grid[i][col] !== '-'; i++) {
+    verticalWord += grid[i][col];
+  }
+
+  // Return a valid word only if it's longer than 1 character
+  return verticalWord.length > 1 ? verticalWord : null;
+};
+
+// Extract potential horizontal word formed at the intersection point when placing vertically
+const extractHorizontalWord = (grid, word, row, col, wordIndex, direction) => {
+  let horizontalWord = '';
+  
+  // Scan leftwards
+  for (let j = col - 1; j >= 0 && grid[row][j] !== '-'; j--) {
+    horizontalWord = grid[row][j] + horizontalWord;
+  }
+
+  // Add the current character of the word being placed
+  horizontalWord += word[wordIndex];
+
+  // Scan rightwards
+  for (let j = col + 1; j < grid[0].length && grid[row][j] !== '-'; j++) {
+    horizontalWord += grid[row][j];
+  }
+
+  // Return a valid word only if it's longer than 1 character
+  return horizontalWord.length > 1 ? horizontalWord : null;
+};
+
+// Function to try placing a word in either horizontal or vertical direction
+const tryPlaceWord = (grid, word, row, col, direction, wordList, isConnected) => {
+  if (direction === 'horizontal' && canPlaceHorizontal(grid, word, row, col, wordList, isConnected)) {
+    return placeHorizontal(grid, word, row, col);
+  } else if (direction === 'vertical' && canPlaceVertical(grid, word, row, col, wordList, isConnected)) {
+    return placeVertical(grid, word, row, col);
+  }
+  return null;
+};
+
+// Recursive function to attempt placing a list of words into the grid, alternating between horizontal and vertical
+const placeWords = (grid, words, direction = 'horizontal', wordList, placedWords = 0) => {
+  if (words.length === 0) return grid;
+
+  const [word, ...rest] = words;
+  const isConnected = placedWords > 0; // After the first word, all subsequent words must intersect
+
+  for (let row = 0; row < grid.length; row++) {
+    for (let col = 0; col <   grid[0].length; col++) {
+      const newGrid = tryPlaceWord(grid, word, row, col, direction, wordList, isConnected);
+      if (newGrid) {
+        const nextDirection = direction === 'horizontal' ? 'vertical' : 'horizontal'; // Toggle direction
+        const resultGrid = placeWords(newGrid, rest, nextDirection, wordList, placedWords + 1); // Recursive call
+        if (resultGrid) return resultGrid; // If all words are placed, return the result
+      }
+    }
+  }
+
+  return null; // Return null if placement is not possible
+};
+
+// Function to generate the crossword grid
+const generateCrossword = (gridSize, words) => {
+  const grid = createGrid(gridSize);
+  // return placeWords(grid, words.sort((a, b) => b.length - a.length), 'horizontal', words); // Sort words by length
+  return placeWords(grid, words, 'horizontal', words); // Sort words by length
+};
+
+// Function to print the grid
+const printGrid = (grid) => {
+  if (!grid) {
+    console.log("Failed to place all words.");
+  } else {
+    grid.forEach((row) => console.log(row.join(' ')));
+  }
+};
+
+// Example usage
+// const words = ["CROSSWORD", "PUZZLE", "COMPLEX", "PYTHON", "GRID", "GENERATOR", "ALGORITHM", "WORD", "GENE", "PYTHONIC", "LOG"];
+const crosswordGrid = generateCrossword(15, parsedWords);
+
+printGrid(crosswordGrid);
