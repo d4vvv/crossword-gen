@@ -1,8 +1,12 @@
 import fs from 'fs'
+import { difference } from 'lodash-es'
 
 const fileData = fs.readFileSync('./combinedData.json', 'utf-8')
 
 const parsedWords = JSON.parse(fileData)
+
+var consumedWords = 0
+let usedWords = []
 
 // Helper function to create an empty grid
 const createGrid = size =>
@@ -27,14 +31,8 @@ const canPlaceHorizontal = (grid, word, row, col, wordList, isConnected) => {
     }
 
     // Check for valid vertical words at the intersection points
-    let verticalWord = extractVerticalWord(
-      grid,
-      word,
-      row,
-      col + i,
-      i,
-      'horizontal'
-    )
+    let verticalWord = extractVerticalWord(grid, word, row, col + i, i)
+
     if (verticalWord && !wordList.includes(verticalWord)) {
       return false // Invalid vertical word formed
     }
@@ -45,7 +43,7 @@ const canPlaceHorizontal = (grid, word, row, col, wordList, isConnected) => {
       row,
       col + i,
       i,
-      'horizontal'
+      true
     )
 
     if (horizontalWord && !wordList.includes(horizontalWord)) {
@@ -82,7 +80,7 @@ const canPlaceVertical = (grid, word, row, col, wordList, isConnected) => {
       return false // Invalid horizontal word formed
     }
 
-    let verticalWord = extractVerticalWord(grid, word, row + i, col, i)
+    let verticalWord = extractVerticalWord(grid, word, row + i, col, i, true)
 
     if (verticalWord && !wordList.includes(verticalWord)) {
       return false // Invalid vertical word formed
@@ -116,7 +114,7 @@ const placeVertical = (grid, word, row, col) =>
   )
 
 // Extract potential vertical word formed at the intersection point when placing horizontally
-const extractVerticalWord = (grid, word, row, col, wordIndex, direction) => {
+const extractVerticalWord = (grid, word, row, col, wordIndex, test) => {
   let verticalWord = ''
 
   // Scan upwards
@@ -132,12 +130,16 @@ const extractVerticalWord = (grid, word, row, col, wordIndex, direction) => {
     verticalWord += grid[i][col]
   }
 
+  if (test) {
+    return verticalWord.length > 2 ? verticalWord : null
+  }
+
   // Return a valid word only if it's longer than 1 character
   return verticalWord.length > 1 ? verticalWord : null
 }
 
 // Extract potential horizontal word formed at the intersection point when placing vertically
-const extractHorizontalWord = (grid, word, row, col, wordIndex, direction) => {
+const extractHorizontalWord = (grid, word, row, col, wordIndex, test) => {
   let horizontalWord = ''
 
   // Scan leftwards
@@ -151,6 +153,10 @@ const extractHorizontalWord = (grid, word, row, col, wordIndex, direction) => {
   // Scan rightwards
   for (let j = col + 1; j < grid[0].length && grid[row][j] !== '-'; j++) {
     horizontalWord += grid[row][j]
+  }
+
+  if (test) {
+    return horizontalWord.length > 2 ? horizontalWord : null
   }
 
   // Return a valid word only if it's longer than 1 character
@@ -188,61 +194,91 @@ const placeWords = (
   grid,
   words,
   numberOfWords,
-  direction = 'horizontal',
+  inputDirection = 'horizontal',
   wordList,
   placedWords = 0,
   maxAttempts = 100
 ) => {
-  if (words.length === 0 || placedWords >= numberOfWords) return grid
+  const freeWords = difference(words, usedWords)
 
-  let attempts = 0
-
-  const [word, ...rest] = words
+  var word = freeWords[Math.floor(Math.random() * freeWords.length)]
   const isConnected = placedWords > 0 // After the first word, all subsequent words must intersect
 
-  let nextDirection = direction
+  // let nextDirection = direction
 
-  printGrid(grid)
+  // printGrid(grid)
 
-  while (attempts < maxAttempts) {
-    const row = Math.floor(Math.random() * grid.length)
-    const col = Math.floor(Math.random() * grid[0].length)
-    nextDirection = Math.round(Math.random()) ? 'horizontal' : 'vertical'
-
-    const newGrid = tryPlaceWord(
-      grid,
-      word,
-      row,
-      col,
-      nextDirection,
-      wordList,
-      isConnected
-    )
-
-    if (newGrid) {
-      const resultGrid = placeWords(
-        newGrid,
-        rest,
-        numberOfWords,
-        nextDirection,
+  for (let i = 0; i < grid.length; i++) {
+    for (let j = 0; j < grid[0].length; j++) {
+      const newGrid = tryPlaceWord(
+        grid,
+        word,
+        i,
+        j,
+        inputDirection === 'horizontal' ? 'vertical' : 'horizontal',
         wordList,
-        placedWords + 1,
-        maxAttempts
-      ) // Recursive call
-      if (resultGrid) return resultGrid // If all words are placed, return the result
+        isConnected
+      )
+
+      if (newGrid) {
+        usedWords.push(word)
+        consumedWords++
+
+        console.log({ consumedWords })
+
+        return newGrid
+      }
     }
-    attempts++
   }
 
-  // If max attempts reached, skip this word and try the next
-  return placeWords(grid, rest, numberOfWords, direction, wordList, placedWords)
+  for (let i = 0; i < grid.length; i++) {
+    for (let j = 0; j < grid[0].length; j++) {
+      const newGrid = tryPlaceWord(
+        grid,
+        word,
+        i,
+        j,
+        inputDirection,
+        wordList,
+        isConnected
+      )
+
+      if (newGrid) {
+        usedWords.push(word)
+        consumedWords++
+
+        console.log({ consumedWords })
+
+        return newGrid
+      }
+    }
+  }
+
+  return grid
 }
 
 // Function to generate the crossword grid
 const generateCrossword = (gridSize, words, numberOfWords) => {
-  const grid = createGrid(gridSize)
+  let grid = createGrid(gridSize)
   const shuffledWords = shuffleArray(words) // Shuffle to randomize the selection
-  return placeWords(grid, shuffledWords, numberOfWords, 'horizontal', words) // Sort words by length
+  // return placeWords(grid, shuffledWords, numberOfWords, 'horizontal', words) // Sort words by length
+
+  let direction = 'horizontal'
+
+  while (consumedWords < numberOfWords) {
+    grid = placeWords(
+      grid,
+      shuffledWords,
+      numberOfWords,
+      direction,
+      words,
+      consumedWords
+    )
+
+    direction = direction === 'horizontal' ? 'vertical' : 'horizontal'
+  }
+
+  return grid
 }
 
 // Function to print the grid
@@ -254,7 +290,7 @@ const printGrid = grid => {
   }
 }
 
-const numberOfWordsToPlace = 5 // Specify how many words you want to place
-printGrid(generateCrossword(20, parsedWords, numberOfWordsToPlace))
+const numberOfWordsToPlace = 15 // Specify how many words you want to place
+printGrid(generateCrossword(10, parsedWords, numberOfWordsToPlace))
 
 // crosswordGrid
