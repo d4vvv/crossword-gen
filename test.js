@@ -9,8 +9,8 @@ var consumedWords = 0
 let usedWords = []
 
 // Helper function to create an empty grid
-const createGrid = size =>
-  Array.from({ length: size }, () => Array(size).fill('-'))
+const createGrid = (sizeRows, sizeCols) =>
+  Array.from({ length: sizeRows }, () => Array(sizeCols).fill('-'))
 
 // Function to shuffle an array (for random word selection)
 const shuffleArray = array => array.sort(() => Math.random() - 0.5)
@@ -176,13 +176,11 @@ const tryPlaceWord = (
   if (
     direction === 'horizontal' &&
     canPlaceHorizontal(grid, word, row, col, wordList, isConnected)
-    // && canPlaceVertical(grid, word, row, col, wordList, isConnected)
   ) {
     return placeHorizontal(grid, word, row, col)
   } else if (
     direction === 'vertical' &&
     canPlaceVertical(grid, word, row, col, wordList, isConnected)
-    // && canPlaceHorizontal(grid, word, row, col, wordList, isConnected)
   ) {
     return placeVertical(grid, word, row, col)
   }
@@ -193,20 +191,14 @@ const tryPlaceWord = (
 const placeWords = (
   grid,
   words,
-  numberOfWords,
   inputDirection = 'horizontal',
   wordList,
-  placedWords = 0,
-  maxAttempts = 100
+  placedWords = 0
 ) => {
   const freeWords = difference(words, usedWords)
 
   var word = freeWords[Math.floor(Math.random() * freeWords.length)]
   const isConnected = placedWords > 0 // After the first word, all subsequent words must intersect
-
-  // let nextDirection = direction
-
-  // printGrid(grid)
 
   for (let i = 0; i < grid.length; i++) {
     for (let j = 0; j < grid[0].length; j++) {
@@ -258,25 +250,25 @@ const placeWords = (
 }
 
 // Function to generate the crossword grid
-const generateCrossword = (gridSize, words, numberOfWords) => {
-  let grid = createGrid(gridSize)
+const generateCrossword = (
+  gridSizeRows,
+  gridSizeCols,
+  words,
+  numberOfWords
+) => {
+  let grid = createGrid(gridSizeRows, gridSizeCols)
   const shuffledWords = shuffleArray(words) // Shuffle to randomize the selection
   // return placeWords(grid, shuffledWords, numberOfWords, 'horizontal', words) // Sort words by length
 
   let direction = 'horizontal'
 
   while (consumedWords < numberOfWords) {
-    grid = placeWords(
-      grid,
-      shuffledWords,
-      numberOfWords,
-      direction,
-      words,
-      consumedWords
-    )
+    grid = placeWords(grid, shuffledWords, direction, words, consumedWords)
 
     direction = direction === 'horizontal' ? 'vertical' : 'horizontal'
   }
+
+  console.log({ grid })
 
   return grid
 }
@@ -290,7 +282,7 @@ const printGrid = grid => {
   }
 }
 
-const numberOfWordsToPlace = 15 // Specify how many words you want to place
-printGrid(generateCrossword(10, parsedWords, numberOfWordsToPlace))
+const numberOfWordsToPlace = 10 // Specify how many words you want to place
+printGrid(generateCrossword(10, 10, parsedWords, numberOfWordsToPlace))
 
 // crosswordGrid

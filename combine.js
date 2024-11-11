@@ -7,18 +7,15 @@ async function readAndCombineJsonFiles(filePaths) {
       const data = fs.readFileSync(filePath, 'utf-8') // Read file as string
 
       const jsonData = JSON.parse(data) // Parse JSON data
-      const keys = jsonData.map(item => item.key)
 
-      const combinedRead = fs.readFileSync('./combinedData.json', 'utf-8')
+      const combinedRead = fs.readFileSync('./combinedData2.json', 'utf-8')
 
       const combinedJsonData = JSON.parse(combinedRead)
 
-      console.log({ combinedJsonData })
-
-      const combinedData = [...combinedJsonData, ...keys]
+      const combinedData = [...combinedJsonData, ...jsonData]
 
       fs.writeFileSync(
-        './combinedData.json',
+        './combinedData2.json',
         JSON.stringify(combinedData, null, 2),
         { encoding: 'utf-8' },
         err => {
@@ -30,7 +27,7 @@ async function readAndCombineJsonFiles(filePaths) {
 
       // Combine data (example: assuming each file contains an array of objects)
     }
-    console.log('Combined data saved to combinedData.json')
+    console.log('Combined data saved to combinedData2.json')
   } catch (error) {
     console.error('Error:', error)
   }
