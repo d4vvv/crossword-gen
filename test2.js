@@ -1,5 +1,4 @@
 import fs from 'fs'
-import { difference } from 'lodash-es'
 
 const wordsListJson = fs.readFileSync('./combinedData.json', 'utf-8')
 const fileDataJson = fs.readFileSync('./combinedData2.json', 'utf-8')
@@ -9,9 +8,8 @@ const wordsList = JSON.parse(wordsListJson)
 var questionsList = JSON.parse(fileDataJson)
 
 var consumedWords = 0
-let usedWords = []
 
-const testVV = (grid, word, row, col) => {
+const testVerticalToVertical = (grid, word, row, col) => {
   let verticalWord = ''
 
   // Scan upwards
@@ -34,7 +32,7 @@ const testVV = (grid, word, row, col) => {
   return verticalWord
 }
 
-const testHH = (grid, word, row, col) => {
+const testHorizontalToHorizontal = (grid, word, row, col) => {
   let horizontalWord = ''
 
   // Scan leftwards
@@ -70,9 +68,9 @@ const canPlaceHorizontal = (grid, word, row, col, wordList, isConnected) => {
 
   let intersects = false
 
-  const testH = testHH(grid, word, row, col)
+  const horizontalTest = testHorizontalToHorizontal(grid, word, row, col)
 
-  if (testH !== word && !wordsList.includes(testH)) {
+  if (horizontalTest !== word && !wordsList.includes(horizontalTest)) {
     return false
   }
 
@@ -107,8 +105,8 @@ const canPlaceVertical = (grid, word, row, col, wordList, isConnected) => {
 
   let intersects = false
 
-  const testV = testVV(grid, word, row, col)
-  if (testV !== word && !wordsList.includes(testV)) {
+  const verticalTest = testVerticalToVertical(grid, word, row, col)
+  if (verticalTest !== word && !wordsList.includes(verticalTest)) {
     return false
   }
 
@@ -210,13 +208,11 @@ const tryPlaceWord = (
     direction === 'horizontal' &&
     canPlaceHorizontal(grid, word, row, col, wordList, isConnected)
   ) {
-    console.log({ word })
     return placeHorizontal(grid, word, row, col)
   } else if (
     direction === 'vertical' &&
     canPlaceVertical(grid, word, row, col, wordList, isConnected)
   ) {
-    console.log({ word })
     return placeVertical(grid, word, row, col)
   }
   return null
@@ -230,9 +226,6 @@ const placeWords = (
   wordList,
   placedWords = 0
 ) => {
-  // const freeWords = difference(wordList, usedWords)
-  // const freeWords = words
-
   var questionEntry =
     questionsList[Math.floor(Math.random() * questionsList.length)]
 
@@ -251,7 +244,6 @@ const placeWords = (
       )
 
       if (newGrid) {
-        // usedWords.push(word)
         questionsList = questionsList.filter(
           question => question.key !== questionEntry.key
         )
